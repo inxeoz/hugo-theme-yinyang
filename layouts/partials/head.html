@@ -77,6 +77,95 @@
     (function (undefined) { }).call('object' === typeof window && window || 'object' === typeof self && self || 'object' === typeof global && global || {});
   </script> -->
 
+  <!-- Prevent theme flash by setting theme before page render -->
+  <script data-cfasync="false">
+    (function() {
+      const themeKey = 'theme';
+      const themes = { light: 'light', dark: 'dark', system: 'system' };
+
+      function getSystemTheme() {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      function getStoredTheme() {
+        return localStorage.getItem(themeKey);
+      }
+      function getCurrentTheme() {
+        const stored = getStoredTheme();
+        if (stored && stored !== themes.system) {
+          return stored;
+        }
+        return getSystemTheme();
+      }
+      function setTheme(theme) {
+        const root = document.documentElement;
+        if (theme === themes.system) {
+          theme = getSystemTheme();
+        }
+        if (theme === themes.dark) {
+          root.setAttribute('data-theme', 'dark');
+        } else {
+          root.removeAttribute('data-theme');
+        }
+        updateToggleButton(theme);
+      }
+      function updateToggleButton(theme) {
+        const button = document.getElementById('theme-toggle');
+        if (button) {
+          button.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+      }
+      function ensureButtonUpdated() {
+        updateToggleButton(getCurrentTheme());
+      }
+      function initTheme() {
+        const stored = getStoredTheme();
+        let theme;
+        if (stored) {
+          theme = stored === themes.system ? getSystemTheme() : stored;
+          setTheme(stored);
+        } else {
+          // Default to system
+          theme = getSystemTheme();
+          setTheme(themes.system);
+        }
+      }
+      function toggleTheme() { // button onClick function
+        const current = getStoredTheme() || themes.system;
+        let next;
+        if (current === themes.system) {
+          next = getSystemTheme() === 'dark' ? themes.light : themes.dark;
+        } else if (current === themes.dark) {
+          next = themes.light;
+        } else {
+          next = themes.dark;
+        }
+        localStorage.setItem(themeKey, next);
+        setTheme(next);
+      }
+
+      // Listen for system theme changes
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        const stored = getStoredTheme();
+        if (!stored || stored === themes.system) {
+          setTheme(themes.system);
+        }
+      });
+
+      // Listen for dom loaded
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ensureButtonUpdated);
+      } else {
+        // DOM already loaded, update button immediately
+        ensureButtonUpdated();
+      }
+
+      // Expose toggle function globally
+      window.toggleTheme = toggleTheme;
+
+      // Initialize when DOM is ready
+      initTheme();
+    })();
+  </script>
   {{ if .Site.Params.TwitterCards }}{{ template "_internal/twitter_cards.html" .}}{{ end }}
   {{ .Site.Params.extraHead | safeHTML }}
 </head>
